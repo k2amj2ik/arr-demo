@@ -1,0 +1,21 @@
+{
+  "rateBrackets": [
+    { "min": 0, "max": 3000000, "rate": 0.04, "label": "300만원 이하" },
+    { "min": 3000000, "max": 30000000, "rate": 0.03, "label": "300만~3,000만원" },
+    { "min": 30000000, "max": 50000000, "rate": 0.01, "label": "3,000만~5,000만원" },
+    { "min": 50000000, "max": 1000000000, "rate": 0.005, "label": "5,000만~10억원" },
+    { "min": 1000000000, "max": null, "rate": 0.0025, "label": "10억원 초과" }
+  ],
+  "minimumPrice": 5000000,
+  "maximumRoyalty": null,
+  "effectiveDate": "2027-10-23",
+  "buyerPremiumRate": 0.15,
+  "currency": "KRW",
+  "copyrightDuration": 70,
+  "updatedAt": "2026-04-07",
+  "updatedBy": "시스템 관리자",
+  "changeLog": [
+    { "date": "2026-04-07", "change": "초기 설정 (EU 기준 참고, 시행령 확정 시 변경)", "by": "시스템 관리자" }
+  ],
+  "note": "시행령 미확정 — 비율/최소금액/상한은 시행령 확정 시 업데이트 필요"
+}

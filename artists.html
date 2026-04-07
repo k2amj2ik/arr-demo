@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>작가 DB — 추급권 정산 플랫폼</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen" data-page="artists">
+  <div id="nav"></div>
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">작가 데이터베이스 <span class="text-sm font-normal text-slate-400">(A-06)</span></h1>
+
+    <!-- 필터 -->
+    <div class="bg-white rounded-xl border p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">검색</label>
+        <input id="a-search" type="text" placeholder="작가명, 분야..." class="border rounded-lg px-3 py-1.5 text-sm w-48" oninput="renderArtists()">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">국적</label>
+        <select id="a-nation" class="border rounded-lg px-3 py-1.5 text-sm" onchange="renderArtists()">
+          <option value="">전체</option>
+          <option value="KR">한국</option>
+          <option value="JP">일본</option>
+          <option value="US">미국</option>
+          <option value="GB">영국</option>
+          <option value="DE">독일</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">추급권 상태</label>
+        <select id="a-status" class="border rounded-lg px-3 py-1.5 text-sm" onchange="renderArtists()">
+          <option value="">전체</option>
+          <option value="존속">존속</option>
+          <option value="만료">만료</option>
+        </select>
+      </div>
+      <div class="text-sm text-slate-400" id="a-count"></div>
+    </div>
+
+    <!-- 작가 카드 그리드 -->
+    <div id="artist-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </main>
+
+  <script src="js/arr-engine.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+  function initPage() { renderArtists(); }
+
+  function renderArtists() {
+    const query = document.getElementById('a-search').value.toLowerCase();
+    const nation = document.getElementById('a-nation').value;
+    const status = document.getElementById('a-status').value;
+
+    let data = ARTISTS_DATA.map(a => ({ ...a, cs: getCopyrightStatus(a) }));
+    if (query) data = data.filter(a => a.name.toLowerCase().includes(query) || a.nameEn.toLowerCase().includes(query) || a.field.includes(query));
+    if (nation) data = data.filter(a => a.nationality === nation);
+    if (status) data = data.filter(a => a.cs.status === status);
+
+    document.getElementById('a-count').textContent = `${data.length}명`;
+
+    const nationFlags = { KR: '🇰🇷', JP: '🇯🇵', US: '🇺🇸', GB: '🇬🇧', DE: '🇩🇪' };
+
+    document.getElementById('artist-grid').innerHTML = data.map(a => {
+      const txCount = TRANSACTIONS_DATA.filter(t => t.artistId === a.id).length;
+      return `
+        <div class="bg-white rounded-xl border p-5 hover:shadow-md transition cursor-pointer" onclick="showArtistDetail(${a.id})">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="font-bold text-slate-800 text-lg">${a.name}</div>
+              <div class="text-sm text-slate-400">${a.nameEn}</div>
+            </div>
+            <span class="text-xl">${nationFlags[a.nationality] || '🌐'}</span>
+          </div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xs px-2 py-0.5 rounded-full ${a.cs.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+              ${a.cs.label}
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">${a.field}</span>
+          </div>
+          <div class="text-xs text-slate-400 flex justify-between">
+            <span>${a.birth.slice(0,4)}~${a.death ? a.death.slice(0,4) : '현재'}</span>
+            <span>거래 ${txCount}건</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function showArtistDetail(id) {
+    const a = getArtistById(id);
+    if (!a) return;
+    const cs = getCopyrightStatus(a);
+    const txs = enrichTransactions().filter(t => t.artistId === id);
+    const eligible = txs.filter(t => t.eligibility.eligible);
+    const totalRoyalty = eligible.reduce((s, t) => s + t.royalty.totalRoyalty, 0);
+
+    const html = `
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        ${statCard('총 거래', `${txs.length}건`, `추급권 적용 ${eligible.length}건`, 'blue')}
+        ${statCard('추급권료 합계', formatKRW(totalRoyalty), '', 'teal')}
+      </div>
+      <table class="w-full text-sm mb-4">
+        <tr class="border-b"><td class="py-2 text-slate-500 w-28">이름</td><td class="py-2 font-medium">${a.name} (${a.nameEn})</td></tr>
+        <tr class="border-b"><td class="py-2 text-slate-500">생년월일</td><td class="py-2">${a.birth}</td></tr>
+        <tr class="border-b"><td class="py-2 text-slate-500">사망일</td><td class="py-2">${a.death || '생존 중'}</td></tr>
+        <tr class="border-b"><td class="py-2 text-slate-500">국적</td><td class="py-2">${a.nationality}</td></tr>
+        <tr class="border-b"><td class="py-2 text-slate-500">분야</td><td class="py-2">${a.field}</td></tr>
+        <tr class="border-b"><td class="py-2 text-slate-500">추급권 상태</td><td class="py-2"><span class="px-2 py-0.5 rounded-full text-xs ${cs.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${cs.label}</span></td></tr>
+        <tr><td class="py-2 text-slate-500">비고</td><td class="py-2 text-slate-600">${a.note || '—'}</td></tr>
+      </table>
+      ${txs.length > 0 ? `
+        <h3 class="font-bold text-sm text-slate-700 mb-2">거래 이력</h3>
+        <table class="w-full text-xs">
+          <thead class="bg-gray-50"><tr>
+            <th class="p-2 text-left">거래일</th><th class="p-2 text-left">작품</th>
+            <th class="p-2 text-right">낙찰가</th><th class="p-2 text-right">추급권료</th><th class="p-2 text-center">상태</th>
+          </tr></thead>
+          <tbody>${txs.map(t => `
+            <tr class="border-t">
+              <td class="p-2">${t.saleDate}</td><td class="p-2">${t.title}</td>
+              <td class="p-2 text-right">${formatKRW(t.salePrice)}</td>
+              <td class="p-2 text-right ${t.eligibility.eligible ? 'text-teal-600' : 'text-slate-300'}">${t.eligibility.eligible ? formatKRW(t.royalty.totalRoyalty) : '—'}</td>
+              <td class="p-2 text-center">${statusBadge(t.reportStatus)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      ` : '<p class="text-sm text-slate-400">거래 이력 없음</p>'}`;
+    showModal(`${a.name} (${a.nameEn})`, html);
+  }
+  </script>
+</body>
+</html>
