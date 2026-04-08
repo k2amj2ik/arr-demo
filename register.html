@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>거래 등록 — 추급권 정산 플랫폼</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen" data-page="register">
+  <div id="nav"></div>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <h1 class="text-2xl font-bold text-slate-800 mb-2">거래 등록</h1>
+    <p class="text-sm text-slate-400 mb-6">갤러리/아트딜러가 재판매 거래를 직접 등록합니다. 등록 즉시 추급권 해당 여부가 자동 판별됩니다.</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+      <!-- 입력 폼 -->
+      <div class="lg:col-span-3">
+        <div class="bg-white rounded-xl border p-6">
+
+          <!-- 채널 선택 -->
+          <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+            <label class="block text-sm font-medium text-slate-700 mb-2">등록 채널</label>
+            <div class="flex gap-4">
+              <label class="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                <input type="radio" name="channel" value="gallery" checked class="accent-blue-600">
+                <div>
+                  <div class="text-sm font-medium">갤러리 웹 콘솔</div>
+                  <div class="text-xs text-slate-400">직접 입력</div>
+                </div>
+              </label>
+              <label class="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                <input type="radio" name="channel" value="api" class="accent-blue-600">
+                <div>
+                  <div class="text-sm font-medium">서울옥션 API</div>
+                  <div class="text-xs text-slate-400">자동 연동</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- API 시뮬레이션 안내 (API 선택 시) -->
+          <div id="api-notice" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+            <div class="text-sm text-blue-700">
+              <strong>API 연동 시뮬레이션:</strong> 실제로는 서울옥션 자체 시스템에서 낙찰 시 자동으로 API가 호출됩니다. 여기서는 데모용으로 수동 입력합니다.
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- 작가 검색 -->
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-600 mb-1">작가 <span class="text-red-400">*</span></label>
+              <input id="r-artist-search" type="text" placeholder="작가명 검색 (예: 이우환, 김환기...)"
+                class="w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                oninput="onRegArtistSearch(this.value)">
+              <div id="r-artist-results" class="mt-1 border rounded-lg bg-white shadow-lg hidden max-h-48 overflow-auto z-20 relative"></div>
+              <div id="r-selected-artist" class="mt-2 hidden"></div>
+            </div>
+
+            <!-- 작품명 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">작품명 <span class="text-red-400">*</span></label>
+              <input id="r-title" type="text" placeholder="예: 무제 05-IV-71" class="w-full border rounded-lg px-3 py-2.5 text-sm">
+            </div>
+
+            <!-- 매체 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">매체</label>
+              <select id="r-medium" class="w-full border rounded-lg px-3 py-2.5 text-sm">
+                <option value="유화">유화</option>
+                <option value="아크릴">아크릴</option>
+                <option value="혼합매체">혼합매체</option>
+                <option value="판화">판화</option>
+                <option value="실크스크린">실크스크린</option>
+                <option value="조각">조각</option>
+                <option value="설치">설치</option>
+                <option value="사진">사진</option>
+                <option value="영상">영상</option>
+                <option value="먹">먹/수묵</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+
+            <!-- 제작년도 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">제작년도</label>
+              <input id="r-year" type="number" placeholder="2020" class="w-full border rounded-lg px-3 py-2.5 text-sm" min="1800" max="2027">
+            </div>
+
+            <!-- 판매가 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">판매가 (원) <span class="text-red-400">*</span></label>
+              <input id="r-price" type="text" placeholder="50,000,000" class="w-full border rounded-lg px-3 py-2.5 text-sm font-bold" oninput="onRegPriceInput(this)">
+              <div class="flex gap-2 mt-2 flex-wrap">
+                <button onclick="setRegPrice(10000000)" class="px-2 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200">1천만</button>
+                <button onclick="setRegPrice(30000000)" class="px-2 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200">3천만</button>
+                <button onclick="setRegPrice(50000000)" class="px-2 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200">5천만</button>
+                <button onclick="setRegPrice(100000000)" class="px-2 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200">1억</button>
+                <button onclick="setRegPrice(500000000)" class="px-2 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200">5억</button>
+              </div>
+            </div>
+
+            <!-- 거래일 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">거래일 <span class="text-red-400">*</span></label>
+              <input id="r-date" type="date" class="w-full border rounded-lg px-3 py-2.5 text-sm" value="2027-11-17">
+            </div>
+
+            <!-- 거래처 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">거래처</label>
+              <input id="r-venue" type="text" placeholder="갤러리명 또는 경매사" class="w-full border rounded-lg px-3 py-2.5 text-sm" value="">
+            </div>
+
+            <!-- 거래 유형 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">거래 유형 <span class="text-red-400">*</span></label>
+              <div class="flex gap-4 mt-1">
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="saleType" value="재판매" checked class="accent-teal-600">
+                  <span class="text-sm">재판매</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="saleType" value="최초판매" class="accent-teal-600">
+                  <span class="text-sm">최초 판매 (작가 직접)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 거래업자 유형 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">거래업자 유형</label>
+              <select id="r-buyer-type" class="w-full border rounded-lg px-3 py-2.5 text-sm">
+                <option value="갤러리">갤러리/딜러</option>
+                <option value="경매">경매사</option>
+                <option value="아트페어">아트페어</option>
+                <option value="개인">개인 간 거래</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 등록 버튼 -->
+          <div class="mt-6 flex gap-3">
+            <button onclick="registerTransaction()" class="flex-1 bg-teal-600 text-white rounded-lg py-3 font-bold hover:bg-teal-700 transition text-sm">
+              거래 등록 + 추급권 자동 판별
+            </button>
+            <button onclick="resetForm()" class="px-6 py-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm">
+              초기화
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 실시간 판별 결과 -->
+      <div class="lg:col-span-2">
+        <!-- 판별 결과 -->
+        <div id="reg-result" class="bg-white rounded-xl border p-6 mb-4">
+          <h2 class="font-bold text-slate-700 mb-3">추급권 판별 결과</h2>
+          <p class="text-sm text-slate-400">거래를 등록하면 자동으로 판별됩니다.</p>
+        </div>
+
+        <!-- 최근 등록 거래 -->
+        <div class="bg-white rounded-xl border p-6">
+          <h2 class="font-bold text-slate-700 mb-3">이번 세션 등록 거래</h2>
+          <div id="recent-reg" class="space-y-2">
+            <p class="text-sm text-slate-400">아직 등록된 거래가 없습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/arr-engine.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+  let regSelectedArtist = null;
+  let sessionTransactions = [];
+
+  function initPage() {
+    // 채널 라디오 변경 이벤트
+    document.querySelectorAll('input[name="channel"]').forEach(r => {
+      r.addEventListener('change', () => {
+        document.getElementById('api-notice').classList.toggle('hidden', r.value !== 'api');
+      });
+    });
+  }
+
+  // 작가 검색
+  function onRegArtistSearch(query) {
+    const container = document.getElementById('r-artist-results');
+    if (query.length < 1) { container.classList.add('hidden'); return; }
+    const results = searchArtists(query);
+    if (results.length === 0) { container.classList.add('hidden'); return; }
+    container.classList.remove('hidden');
+    container.innerHTML = results.map(a => {
+      const cs = getCopyrightStatus(a);
+      return `<div class="px-3 py-2.5 hover:bg-teal-50 cursor-pointer border-b last:border-0 flex items-center justify-between"
+                   onclick="selectRegArtist(${a.id})">
+        <div>
+          <span class="font-medium text-sm">${a.name}</span>
+          <span class="text-xs text-slate-400 ml-1">${a.nameEn}</span>
+          <span class="text-xs text-slate-400 ml-1">${a.field}</span>
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full ${cs.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${cs.label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function selectRegArtist(id) {
+    regSelectedArtist = getArtistById(id);
+    document.getElementById('r-artist-results').classList.add('hidden');
+    document.getElementById('r-artist-search').value = regSelectedArtist.name;
+    const cs = getCopyrightStatus(regSelectedArtist);
+    document.getElementById('r-selected-artist').classList.remove('hidden');
+    document.getElementById('r-selected-artist').innerHTML = `
+      <div class="flex items-center gap-2 p-2.5 bg-teal-50 border border-teal-200 rounded-lg text-sm">
+        <span class="font-bold text-teal-700">${regSelectedArtist.name}</span>
+        <span class="text-slate-400">${regSelectedArtist.nameEn}</span>
+        <span class="text-xs text-slate-400">${regSelectedArtist.birth.slice(0,4)}~${regSelectedArtist.death ? regSelectedArtist.death.slice(0,4) : '현재'}</span>
+        <span class="ml-auto text-xs px-2 py-0.5 rounded-full ${cs.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${cs.label}</span>
+      </div>`;
+  }
+
+  function setRegPrice(price) {
+    document.getElementById('r-price').value = formatNumber(price);
+  }
+
+  function onRegPriceInput(el) {
+    const num = parseInt(el.value.replace(/[^0-9]/g, ''));
+    if (!isNaN(num)) el.value = formatNumber(num);
+  }
+
+  function getRegPrice() {
+    return parseInt(document.getElementById('r-price').value.replace(/[^0-9]/g, '')) || 0;
+  }
+
+  function resetForm() {
+    regSelectedArtist = null;
+    document.getElementById('r-artist-search').value = '';
+    document.getElementById('r-selected-artist').classList.add('hidden');
+    document.getElementById('r-title').value = '';
+    document.getElementById('r-year').value = '';
+    document.getElementById('r-price').value = '';
+    document.getElementById('r-venue').value = '';
+    document.getElementById('reg-result').innerHTML = `
+      <h2 class="font-bold text-slate-700 mb-3">추급권 판별 결과</h2>
+      <p class="text-sm text-slate-400">거래를 등록하면 자동으로 판별됩니다.</p>`;
+  }
+
+  function registerTransaction() {
+    // 유효성 검사
+    const price = getRegPrice();
+    const title = document.getElementById('r-title').value.trim();
+    const saleDate = document.getElementById('r-date').value;
+
+    if (!regSelectedArtist) { alert('작가를 선택해 주세요.'); return; }
+    if (!title) { alert('작품명을 입력해 주세요.'); return; }
+    if (!price) { alert('판매가를 입력해 주세요.'); return; }
+
+    const isFirstSale = document.querySelector('input[name="saleType"]:checked').value === '최초판매';
+    const buyerType = document.getElementById('r-buyer-type').value;
+    const channel = document.querySelector('input[name="channel"]:checked').value;
+
+    // 거래 데이터 생성
+    const txId = 'T' + String(TRANSACTIONS_DATA.length + sessionTransactions.length + 1).padStart(3, '0');
+    const tx = {
+      id: txId,
+      artistId: regSelectedArtist.id,
+      artistName: regSelectedArtist.name,
+      title: title,
+      medium: document.getElementById('r-medium').value,
+      year: parseInt(document.getElementById('r-year').value) || 2027,
+      salePrice: price,
+      saleDate: saleDate,
+      venue: document.getElementById('r-venue').value || (channel === 'api' ? '서울옥션' : '갤러리'),
+      saleType: isFirstSale ? '최초판매' : '재판매',
+      buyerType: buyerType,
+      isFirstSale: isFirstSale,
+      reportStatus: '미신고'
+    };
+
+    // 판별 실행
+    const eligibility = checkEligibility(tx, regSelectedArtist);
+    const royalty = eligibility.eligible ? calculateRoyalty(price) : { totalRoyalty: 0, effectiveRate: '0', details: [] };
+
+    if (!eligibility.eligible) {
+      tx.reportStatus = '미적용';
+      tx.note = eligibility.checks.find(c => !c.pass)?.reason || '';
+    }
+
+    // 데이터에 추가
+    TRANSACTIONS_DATA.push(tx);
+    sessionTransactions.push({ ...tx, eligibility, royalty });
+
+    // 판별 결과 표시
+    document.getElementById('reg-result').innerHTML = `
+      <h2 class="font-bold text-slate-700 mb-3">추급권 판별 결과</h2>
+
+      <div class="mb-4 flex items-center gap-3 p-3 rounded-lg ${eligibility.eligible ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border'}">
+        <div class="text-2xl">${eligibility.eligible ? '✅' : '❌'}</div>
+        <div>
+          <div class="font-bold ${eligibility.eligible ? 'text-green-700' : 'text-red-600'}">
+            ${eligibility.eligible ? '추급권 적용 대상' : '추급권 미적용'}
+          </div>
+          ${!eligibility.eligible ? `<div class="text-xs text-slate-500 mt-0.5">${eligibility.checks.find(c => !c.pass)?.reason || ''}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="space-y-1.5 mb-4">
+        ${eligibility.checks.map(c => `
+          <div class="flex items-center gap-2 text-xs py-1 border-b border-dashed last:border-0">
+            <span class="${c.pass ? 'text-green-500' : 'text-red-500'}">${c.pass ? '✓' : '✗'}</span>
+            <span class="font-medium w-32 text-slate-600">${c.label}</span>
+            <span class="${c.pass ? 'text-green-600' : 'text-red-600'}">${c.reason}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      ${eligibility.eligible ? `
+        <div class="p-4 bg-teal-50 border border-teal-200 rounded-lg">
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-sm font-medium text-teal-700">추급권료</span>
+            <span class="text-xl font-bold text-teal-700">${formatKRW(royalty.totalRoyalty)}</span>
+          </div>
+          <div class="text-xs text-teal-600">낙찰가 ${formatKRW(price)} 대비 ${royalty.effectiveRate}%</div>
+          <div class="mt-2 space-y-0.5">
+            ${royalty.details.map(d => `
+              <div class="flex justify-between text-xs text-teal-600">
+                <span>${d.label} × ${d.ratePercent}</span>
+                <span>${formatKRW(Math.round(d.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="mt-3 flex gap-2">
+          <a href="transactions.html" class="flex-1 text-center px-3 py-2 bg-white border border-teal-300 text-teal-700 rounded-lg text-xs hover:bg-teal-50">거래 목록에서 확인</a>
+        </div>
+      ` : ''}
+
+      <div class="mt-3 p-2 bg-gray-50 rounded text-xs text-slate-400">
+        등록 채널: ${channel === 'api' ? '서울옥션 API (시뮬레이션)' : '갤러리 웹 콘솔'} | ID: ${txId}
+      </div>
+    `;
+
+    // 최근 등록 목록 업데이트
+    renderSessionList();
+  }
+
+  function renderSessionList() {
+    const container = document.getElementById('recent-reg');
+    if (sessionTransactions.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-400">아직 등록된 거래가 없습니다.</p>';
+      return;
+    }
+    container.innerHTML = sessionTransactions.map((t, i) => `
+      <div class="p-3 rounded-lg border text-sm ${t.eligibility.eligible ? 'bg-white' : 'bg-gray-50'}">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-medium text-slate-800">${t.artistName}</span>
+          ${eligibilityBadge(t.eligibility.eligible)}
+        </div>
+        <div class="text-xs text-slate-500">${t.title} | ${formatKRW(t.salePrice)}</div>
+        ${t.eligibility.eligible ? `<div class="text-xs text-teal-600 mt-1 font-medium">추급권료: ${formatKRW(t.royalty.totalRoyalty)}</div>` : `<div class="text-xs text-slate-400 mt-1">${t.note || '미적용'}</div>`}
+      </div>
+    `).reverse().join('');
+  }
+  </script>
+</body>
+</html>

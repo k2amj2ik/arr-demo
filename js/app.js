@@ -7,6 +7,7 @@ function getNavHTML(activePage) {
   const pages = [
     { id: 'index', label: '대시보드', icon: '📊', href: 'index.html' },
     { id: 'calculator', label: '추급권 계산기', icon: '🧮', href: 'calculator.html' },
+    { id: 'register', label: '거래 등록', icon: '➕', href: 'register.html' },
     { id: 'transactions', label: '거래 관리', icon: '📋', href: 'transactions.html' },
     { id: 'consignment', label: '위탁 안내', icon: '📝', href: 'consignment.html' },
     { id: 'artists', label: '작가 DB', icon: '🎨', href: 'artists.html' },
