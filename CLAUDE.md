@@ -16,7 +16,7 @@
 ```
 demo/
   index.html           # 대시보드 — 통계 카드, 차트, 최근 거래
-  calculator.html      # 추급권 계산기 — 판별(A-01) + 계산(A-02)
+  calculator.html      # 비용 계산기 — 판별(A-01) + 계산(A-02) + 인보이스(A-03) + 위탁 시뮬레이션(A-05)
   transactions.html    # 거래 관리 — 목록, 필터, 인보이스(A-03), 신고서(A-04)
   consignment.html     # 위탁 안내 — 3단계 시뮬레이션(A-05), 안내문 PDF
   artists.html         # 작가 DB — 25명 검색/상세(A-06)
