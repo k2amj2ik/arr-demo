@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>추급권 계산기 — 추급권 정산 플랫폼</title>
+  <title>비용 계산기 — 추급권 정산 플랫폼</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen" data-page="calculator">
   <div id="nav"></div>
 
   <main class="max-w-7xl mx-auto px-4 py-6">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">추급권 계산기 <span class="text-sm font-normal text-slate-400">(A-01 + A-02)</span></h1>
+    <h1 class="text-2xl font-bold text-slate-800 mb-1">비용 계산기</h1>
+    <p class="text-sm text-slate-400 mb-6">추급권 판별 + 추급권료 계산 + 인보이스 + 위탁자 시뮬레이션을 한 화면에서 확인합니다.</p>
 
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      <!-- 입력 패널 -->
+      <!-- 왼쪽: 입력 패널 -->
       <div class="lg:col-span-2">
         <div class="bg-white rounded-xl border p-6 sticky top-4">
           <h2 class="font-bold text-slate-700 mb-4">거래 정보 입력</h2>
@@ -24,7 +26,7 @@
             <input id="artist-search" type="text" placeholder="작가명 검색..."
               class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               oninput="onArtistSearch(this.value)">
-            <div id="artist-results" class="mt-1 border rounded-lg bg-white shadow-lg hidden max-h-48 overflow-auto"></div>
+            <div id="artist-results" class="mt-1 border rounded-lg bg-white shadow-lg hidden max-h-48 overflow-auto relative z-20"></div>
             <div id="selected-artist" class="mt-2 hidden"></div>
           </div>
 
@@ -48,18 +50,12 @@
           <div class="mb-4">
             <label class="block text-sm font-medium text-slate-600 mb-1">거래 유형</label>
             <div class="flex gap-3">
-              <label class="flex items-center gap-1.5">
-                <input type="radio" name="saleType" value="재판매" checked onchange="recalculate()">
-                <span class="text-sm">재판매</span>
-              </label>
-              <label class="flex items-center gap-1.5">
-                <input type="radio" name="saleType" value="최초판매" onchange="recalculate()">
-                <span class="text-sm">최초 판매</span>
-              </label>
+              <label class="flex items-center gap-1.5"><input type="radio" name="saleType" value="재판매" checked onchange="recalculate()"><span class="text-sm">재판매</span></label>
+              <label class="flex items-center gap-1.5"><input type="radio" name="saleType" value="최초판매" onchange="recalculate()"><span class="text-sm">최초 판매</span></label>
             </div>
           </div>
 
-          <!-- 거래업자 관여 -->
+          <!-- 거래업자 -->
           <div class="mb-4">
             <label class="block text-sm font-medium text-slate-600 mb-1">거래업자</label>
             <select id="buyer-type" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="recalculate()">
@@ -72,21 +68,53 @@
           <button onclick="recalculate()" class="w-full bg-teal-600 text-white rounded-lg py-2.5 font-bold hover:bg-teal-700 transition">
             계산하기
           </button>
+
+          <!-- 위탁 시뮬레이션 (경매사만) -->
+          <div id="simulate-section" class="mt-6 pt-6 border-t hidden">
+            <h3 class="font-bold text-slate-700 mb-3">위탁자 안내용 시뮬레이션</h3>
+            <p class="text-xs text-slate-400 mb-3">예상 낙찰가 범위를 입력하면 3단계 시뮬레이션을 생성합니다.</p>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+              <div>
+                <label class="block text-xs text-slate-500 mb-1">저가</label>
+                <input id="sim-low" type="text" class="w-full border rounded-lg px-2 py-1.5 text-sm" value="30,000,000" oninput="fmtSimInput(this)">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-500 mb-1">중가</label>
+                <input id="sim-mid" type="text" class="w-full border rounded-lg px-2 py-1.5 text-sm" value="50,000,000" oninput="fmtSimInput(this)">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-500 mb-1">고가</label>
+                <input id="sim-high" type="text" class="w-full border rounded-lg px-2 py-1.5 text-sm" value="100,000,000" oninput="fmtSimInput(this)">
+              </div>
+            </div>
+            <button onclick="runSimulation()" class="w-full bg-slate-700 text-white rounded-lg py-2 text-sm font-medium hover:bg-slate-800">시뮬레이션 생성</button>
+          </div>
         </div>
       </div>
 
-      <!-- 결과 패널 -->
+      <!-- 오른쪽: 결과 패널 -->
       <div class="lg:col-span-3">
-        <!-- 해당 여부 판별 (A-01) -->
-        <div id="eligibility-result" class="bg-white rounded-xl border p-6 mb-6">
-          <h2 class="font-bold text-slate-700 mb-4">추급권 해당 여부 판별 <span class="text-xs font-normal text-slate-400">(A-01)</span></h2>
+        <!-- 1. 판별 결과 -->
+        <div id="eligibility-result" class="bg-white rounded-xl border p-6 mb-4">
+          <h2 class="font-bold text-slate-700 mb-3">① 추급권 해당 여부 판별 <span class="text-xs font-normal text-slate-400">(A-01)</span></h2>
           <p class="text-sm text-slate-400">낙찰가를 입력하고 [계산하기]를 클릭하세요.</p>
         </div>
 
-        <!-- 계산 결과 (A-02) -->
-        <div id="calculation-result" class="bg-white rounded-xl border p-6">
-          <h2 class="font-bold text-slate-700 mb-4">추급권료 계산 결과 <span class="text-xs font-normal text-slate-400">(A-02)</span></h2>
+        <!-- 2. 계산 결과 -->
+        <div id="calculation-result" class="bg-white rounded-xl border p-6 mb-4">
+          <h2 class="font-bold text-slate-700 mb-3">② 추급권료 계산 <span class="text-xs font-normal text-slate-400">(A-02)</span></h2>
           <p class="text-sm text-slate-400">판별 결과가 '적용'인 경우 자동 계산됩니다.</p>
+        </div>
+
+        <!-- 3. 인보이스 -->
+        <div id="invoice-result" class="bg-white rounded-xl border p-6 mb-4">
+          <h2 class="font-bold text-slate-700 mb-3">③ 인보이스 미리보기 <span class="text-xs font-normal text-slate-400">(A-03)</span></h2>
+          <p class="text-sm text-slate-400">계산 완료 후 인보이스가 생성됩니다.</p>
+        </div>
+
+        <!-- 4. 위탁 시뮬레이션 결과 -->
+        <div id="simulation-result" class="bg-white rounded-xl border p-6 hidden">
+          <h2 class="font-bold text-slate-700 mb-3">④ 위탁자 안내 시뮬레이션 <span class="text-xs font-normal text-slate-400">(A-05)</span></h2>
         </div>
       </div>
     </div>
@@ -97,8 +125,14 @@
   <script>
   let selectedArtist = null;
 
-  function initPage() {}
+  function initPage() {
+    // 경매사/관리자만 위탁 시뮬레이션 표시
+    if (hasAction('simulate')) {
+      document.getElementById('simulate-section').classList.remove('hidden');
+    }
+  }
 
+  // ── 작가 검색 ──
   function onArtistSearch(query) {
     const container = document.getElementById('artist-results');
     if (query.length < 1) { container.classList.add('hidden'); return; }
@@ -107,12 +141,8 @@
     container.classList.remove('hidden');
     container.innerHTML = results.map(a => {
       const cs = getCopyrightStatus(a);
-      return `<div class="px-3 py-2 hover:bg-teal-50 cursor-pointer border-b last:border-0 flex items-center justify-between"
-                   onclick="selectArtist(${a.id})">
-        <div>
-          <span class="font-medium text-sm">${a.name}</span>
-          <span class="text-xs text-slate-400 ml-1">${a.nameEn}</span>
-        </div>
+      return `<div class="px-3 py-2 hover:bg-teal-50 cursor-pointer border-b last:border-0 flex items-center justify-between" onclick="selectArtist(${a.id})">
+        <div><span class="font-medium text-sm">${a.name}</span> <span class="text-xs text-slate-400 ml-1">${a.nameEn}</span></div>
         <span class="text-xs px-2 py-0.5 rounded-full ${cs.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${cs.label}</span>
       </div>`;
     }).join('');
@@ -133,119 +163,147 @@
     recalculate();
   }
 
-  function setPrice(price) {
-    document.getElementById('sale-price').value = formatNumber(price);
-    recalculate();
-  }
+  function setPrice(price) { document.getElementById('sale-price').value = formatNumber(price); recalculate(); }
+  function onPriceInput(el) { const num = parseInt(el.value.replace(/[^0-9]/g, '')); if (!isNaN(num)) el.value = formatNumber(num); recalculate(); }
+  function getInputPrice() { return parseInt(document.getElementById('sale-price').value.replace(/[^0-9]/g, '')) || 0; }
+  function fmtSimInput(el) { const n = parseInt(el.value.replace(/[^0-9]/g, '')); if (!isNaN(n)) el.value = formatNumber(n); }
+  function parseSimPrice(id) { return parseInt(document.getElementById(id).value.replace(/[^0-9]/g, '')) || 0; }
 
-  function onPriceInput(el) {
-    const num = parseInt(el.value.replace(/[^0-9]/g, ''));
-    if (!isNaN(num)) el.value = formatNumber(num);
-    recalculate();
-  }
-
-  function getInputPrice() {
-    return parseInt(document.getElementById('sale-price').value.replace(/[^0-9]/g, '')) || 0;
-  }
-
+  // ── 메인 계산 ──
   function recalculate() {
     const price = getInputPrice();
     if (price === 0) return;
 
     const isFirstSale = document.querySelector('input[name="saleType"]:checked').value === '최초판매';
     const buyerType = document.getElementById('buyer-type').value;
-
     const tx = { isFirstSale, buyerType, salePrice: price };
     const eligibility = checkEligibility(tx, selectedArtist);
 
-    // 판별 결과 표시
+    // ① 판별 결과
     document.getElementById('eligibility-result').innerHTML = `
-      <h2 class="font-bold text-slate-700 mb-4">추급권 해당 여부 판별 <span class="text-xs font-normal text-slate-400">(A-01)</span></h2>
-      <div class="mb-4 flex items-center gap-3">
-        <div class="text-3xl">${eligibility.eligible ? '✅' : '❌'}</div>
+      <h2 class="font-bold text-slate-700 mb-3">① 추급권 해당 여부 판별 <span class="text-xs font-normal text-slate-400">(A-01)</span></h2>
+      <div class="mb-3 flex items-center gap-3 p-3 rounded-lg ${eligibility.eligible ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+        <div class="text-2xl">${eligibility.eligible ? '✅' : '❌'}</div>
         <div>
-          <div class="text-lg font-bold ${eligibility.eligible ? 'text-green-600' : 'text-red-600'}">
-            ${eligibility.eligible ? '추급권 적용 대상' : '추급권 미적용'}
-          </div>
-          ${!eligibility.eligible ? `<div class="text-sm text-slate-500">${eligibility.checks.find(c => !c.pass)?.reason || ''}</div>` : ''}
+          <div class="font-bold ${eligibility.eligible ? 'text-green-600' : 'text-red-600'}">${eligibility.eligible ? '추급권 적용 대상' : '추급권 미적용'}</div>
+          ${!eligibility.eligible ? `<div class="text-xs text-slate-500">${eligibility.checks.find(c => !c.pass)?.reason || ''}</div>` : ''}
         </div>
       </div>
-      <div class="space-y-2">
+      <div class="space-y-1">
         ${eligibility.checks.map(c => `
-          <div class="flex items-center gap-3 text-sm py-1.5 border-b border-dashed last:border-0">
-            <span class="text-lg">${c.pass ? '✓' : '✗'}</span>
-            <span class="font-medium w-40 text-slate-700">${c.label}</span>
-            <span class="${c.pass ? 'text-green-600' : 'text-red-600'}">${c.reason}</span>
+          <div class="flex items-center gap-2 text-sm py-1 border-b border-dashed last:border-0">
+            <span class="${c.pass ? 'text-green-500' : 'text-red-500'}">${c.pass ? '✓' : '✗'}</span>
+            <span class="font-medium w-36 text-slate-700">${c.label}</span>
+            <span class="${c.pass ? 'text-green-600' : 'text-red-600'} text-xs">${c.reason}</span>
           </div>
         `).join('')}
       </div>`;
 
-    // 계산 결과
     if (eligibility.eligible) {
       const result = calculateRoyalty(price);
       const bpRate = ARR_SETTINGS.buyerPremiumRate;
       const bp = Math.round(price * bpRate);
+      const total = price + bp + result.totalRoyalty;
 
+      // ② 계산 결과
       document.getElementById('calculation-result').innerHTML = `
-        <h2 class="font-bold text-slate-700 mb-4">추급권료 계산 결과 <span class="text-xs font-normal text-slate-400">(A-02)</span></h2>
-
-        <!-- 요약 -->
-        <div class="grid grid-cols-3 gap-4 mb-6">
+        <h2 class="font-bold text-slate-700 mb-3">② 추급권료 계산 <span class="text-xs font-normal text-slate-400">(A-02)</span></h2>
+        <div class="grid grid-cols-3 gap-3 mb-4">
           ${statCard('추급권료', formatKRW(result.totalRoyalty), `낙찰가 대비 ${result.effectiveRate}%`, 'teal')}
           ${statCard('낙찰가', formatKRW(price), '', 'blue')}
-          ${statCard('구매자 총 부담', formatKRW(price + bp + result.totalRoyalty), `낙찰가+BP+ARR`, 'purple')}
+          ${statCard('구매자 총 부담', formatKRW(total), '낙찰가+BP+ARR', 'purple')}
         </div>
-
-        <!-- 구간별 계산 상세 -->
-        <div class="bg-gray-50 rounded-lg p-4 mb-4">
-          <h3 class="font-medium text-sm text-slate-600 mb-3">구간별 계산 상세</h3>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h3 class="font-medium text-sm text-slate-600 mb-2">구간별 계산 상세</h3>
           <table class="w-full text-sm">
-            <thead>
-              <tr class="text-slate-500">
-                <th class="text-left py-1">구간</th>
-                <th class="text-right py-1">비율</th>
-                <th class="text-right py-1">과세 기준</th>
-                <th class="text-right py-1">추급권료</th>
-              </tr>
-            </thead>
+            <thead><tr class="text-slate-500"><th class="text-left py-1">구간</th><th class="text-right py-1">비율</th><th class="text-right py-1">과세 기준</th><th class="text-right py-1">추급권료</th></tr></thead>
             <tbody>
-              ${result.details.map(d => `
-                <tr class="border-t">
-                  <td class="py-2 text-slate-700">${d.label}</td>
-                  <td class="py-2 text-right">${d.ratePercent}</td>
-                  <td class="py-2 text-right text-slate-600">${formatKRW(d.base)}</td>
-                  <td class="py-2 text-right font-medium text-teal-600">${formatKRW(Math.round(d.amount))}</td>
-                </tr>
-              `).join('')}
-              <tr class="border-t-2 border-slate-300 font-bold">
-                <td class="py-2" colspan="3">합계</td>
-                <td class="py-2 text-right text-teal-700 text-base">${formatKRW(result.totalRoyalty)}</td>
-              </tr>
+              ${result.details.map(d => `<tr class="border-t"><td class="py-1.5 text-slate-700">${d.label}</td><td class="py-1.5 text-right">${d.ratePercent}</td><td class="py-1.5 text-right text-slate-600">${formatKRW(d.base)}</td><td class="py-1.5 text-right font-medium text-teal-600">${formatKRW(Math.round(d.amount))}</td></tr>`).join('')}
+              <tr class="border-t-2 border-slate-300 font-bold"><td class="py-2" colspan="3">합계</td><td class="py-2 text-right text-teal-700">${formatKRW(result.totalRoyalty)}</td></tr>
             </tbody>
           </table>
-          ${result.capped ? '<p class="text-xs text-amber-600 mt-2">* 상한 적용됨</p>' : ''}
-        </div>
+        </div>`;
 
-        <!-- 인보이스 미리보기 -->
-        <div class="bg-white border-2 border-dashed rounded-lg p-4">
-          <h3 class="font-medium text-sm text-slate-600 mb-3">인보이스 미리보기 (A-03)</h3>
-          <table class="w-full text-sm">
-            <tr class="border-b"><td class="py-2 text-slate-600">낙찰가</td><td class="py-2 text-right">₩ ${formatNumber(price)}</td></tr>
-            <tr class="border-b"><td class="py-2 text-slate-600">바이어 프리미엄 (${(bpRate*100)}%)</td><td class="py-2 text-right">₩ ${formatNumber(bp)}</td></tr>
-            <tr class="border-b bg-teal-50"><td class="py-2 text-teal-700 font-medium">추급권료 (${result.effectiveRate}%)</td><td class="py-2 text-right text-teal-700 font-medium">₩ ${formatNumber(result.totalRoyalty)}</td></tr>
-            <tr class="font-bold text-base"><td class="py-3">합계</td><td class="py-3 text-right">₩ ${formatNumber(price + bp + result.totalRoyalty)}</td></tr>
-          </table>
-          <p class="text-xs text-slate-400 mt-2">* 추급권료는 저작권법 제14조의2에 따라 저작권단체에 납부됩니다.</p>
+      // ③ 인보이스
+      document.getElementById('invoice-result').innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-bold text-slate-700">③ 인보이스 미리보기 <span class="text-xs font-normal text-slate-400">(A-03)</span></h2>
+          ${hasAction('invoice') ? '<button onclick="generatePDF(\'invoice-pdf\',\'인보이스.pdf\')" class="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs hover:bg-teal-700">PDF 다운로드</button>' : ''}
         </div>
-      `;
+        <div id="invoice-pdf" class="border-2 border-dashed rounded-lg p-5">
+          <div class="flex justify-between items-start mb-6">
+            <div><div class="text-xl font-bold text-slate-800">INVOICE</div><div class="text-xs text-slate-400">미리보기</div></div>
+            <div class="text-right text-xs text-slate-400"><div>Seoul Auction Blue</div><div>${new Date().toISOString().slice(0,10)}</div></div>
+          </div>
+          ${selectedArtist ? `<div class="mb-4 p-3 bg-gray-50 rounded-lg text-sm"><strong>작가:</strong> ${selectedArtist.name} (${selectedArtist.nameEn})</div>` : ''}
+          <table class="w-full text-sm">
+            <tr class="border-b"><td class="py-2.5 text-slate-600">낙찰가 (Hammer Price)</td><td class="py-2.5 text-right">₩ ${formatNumber(price)}</td></tr>
+            <tr class="border-b"><td class="py-2.5 text-slate-600">바이어 프리미엄 (${(bpRate*100)}%)</td><td class="py-2.5 text-right">₩ ${formatNumber(bp)}</td></tr>
+            <tr class="border-b bg-teal-50"><td class="py-2.5 text-teal-700 font-semibold">추급권료 (ARR ${result.effectiveRate}%)</td><td class="py-2.5 text-right text-teal-700 font-semibold">₩ ${formatNumber(result.totalRoyalty)}</td></tr>
+            <tr class="text-lg font-bold"><td class="py-3">합계 (Total)</td><td class="py-3 text-right">₩ ${formatNumber(total)}</td></tr>
+          </table>
+          <p class="text-xs text-slate-400 mt-3 border-t pt-2">* 추급권료는 저작권법 제14조의2에 따라 저작권단체에 납부됩니다.</p>
+        </div>`;
     } else {
       document.getElementById('calculation-result').innerHTML = `
-        <h2 class="font-bold text-slate-700 mb-4">추급권료 계산 결과 <span class="text-xs font-normal text-slate-400">(A-02)</span></h2>
-        <div class="text-center py-8 text-slate-400">
-          <div class="text-4xl mb-2">—</div>
-          <p>추급권 미적용 대상이므로 계산하지 않습니다.</p>
-        </div>`;
+        <h2 class="font-bold text-slate-700 mb-3">② 추급권료 계산 <span class="text-xs font-normal text-slate-400">(A-02)</span></h2>
+        <div class="text-center py-6 text-slate-400"><div class="text-3xl mb-1">—</div><p class="text-sm">추급권 미적용 대상</p></div>`;
+      document.getElementById('invoice-result').innerHTML = `
+        <h2 class="font-bold text-slate-700 mb-3">③ 인보이스 미리보기 <span class="text-xs font-normal text-slate-400">(A-03)</span></h2>
+        <div class="text-center py-6 text-slate-400"><div class="text-3xl mb-1">—</div><p class="text-sm">추급권료가 포함되지 않는 일반 인보이스</p></div>`;
     }
+  }
+
+  // ── 위탁 시뮬레이션 ──
+  function runSimulation() {
+    const low = parseSimPrice('sim-low');
+    const mid = parseSimPrice('sim-mid');
+    const high = parseSimPrice('sim-high');
+    if (!low || !mid || !high) { alert('예상 낙찰가를 모두 입력해 주세요.'); return; }
+
+    const artistId = selectedArtist ? selectedArtist.id : null;
+    const scenarios = [
+      { label: '저가 시나리오', price: low },
+      { label: '중가 시나리오', price: mid },
+      { label: '고가 시나리오', price: high }
+    ].map(s => {
+      const r = calculateRoyalty(s.price);
+      const eligible = selectedArtist ? checkEligibility({ isFirstSale: false, buyerType: '경매', salePrice: s.price }, selectedArtist).eligible : true;
+      return { ...s, royalty: r.totalRoyalty, effectiveRate: r.effectiveRate, eligible, details: r.details };
+    });
+
+    const simEl = document.getElementById('simulation-result');
+    simEl.classList.remove('hidden');
+    simEl.innerHTML = `
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-slate-700">④ 위탁자 안내 시뮬레이션 <span class="text-xs font-normal text-slate-400">(A-05)</span></h2>
+        <button onclick="generatePDF('sim-pdf','위탁자_추급권_안내문.pdf')" class="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs hover:bg-teal-700">PDF 다운로드</button>
+      </div>
+      <div id="sim-pdf" class="space-y-3" style="font-family: sans-serif;">
+        <div class="text-center mb-4">
+          <div class="text-xs text-slate-400">Seoul Auction Blue</div>
+          <div class="text-lg font-bold text-slate-800">추급권료 안내문</div>
+        </div>
+        ${selectedArtist ? `<div class="p-3 bg-gray-50 rounded-lg text-sm mb-4"><strong>작가:</strong> ${selectedArtist.name} (${selectedArtist.nameEn})</div>` : ''}
+        ${scenarios.map(s => `
+          <div class="p-4 rounded-lg border ${s.eligible ? 'bg-white' : 'bg-gray-50'}">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-sm font-medium text-slate-600">${s.label}</span>
+              ${eligibilityBadge(s.eligible)}
+            </div>
+            <div class="flex items-baseline justify-between">
+              <span class="text-lg font-bold">${formatKRW(s.price)}</span>
+              <span class="text-lg font-bold ${s.eligible ? 'text-teal-600' : 'text-slate-300'}">${s.eligible ? formatKRW(s.royalty) : '—'}</span>
+            </div>
+            ${s.eligible ? `<div class="text-xs text-slate-400 mt-1">낙찰가 대비 ${s.effectiveRate}%</div>` : ''}
+          </div>
+        `).join('')}
+        <div class="text-xs text-slate-400 border-t pt-3 mt-4 space-y-1">
+          <p>* 추급권료는 낙찰대금에서 공제되어 저작권단체를 통해 작가에게 지급됩니다.</p>
+          <p>* 법적 근거: 저작권법 제14조의2 (2027년 10월 23일 시행)</p>
+          <p>* 위 금액은 시행령 확정 전 참고용 추정치이며, 실제 비율은 변경될 수 있습니다.</p>
+        </div>
+      </div>`;
   }
   </script>
 </body>

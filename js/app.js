@@ -13,8 +13,8 @@ const ROLES = {
 
 // 역할별 접근 가능 페이지
 const ROLE_PAGES = {
-  admin:   ['index', 'calculator', 'transactions', 'consignment', 'artists', 'settings'],
-  auction: ['index', 'calculator', 'transactions', 'consignment', 'artists'],
+  admin:   ['index', 'calculator', 'transactions', 'artists', 'settings'],
+  auction: ['index', 'calculator', 'transactions', 'artists'],
   gallery: ['index', 'calculator', 'transactions', 'artists'],
   artist:  ['index', 'calculator', 'artists'],
   heir:    ['index', 'artists']
@@ -22,8 +22,8 @@ const ROLE_PAGES = {
 
 // 역할별 접근 가능 버튼/액션
 const ROLE_ACTIONS = {
-  admin:   ['register', 'invoice', 'report', 'export', 'settings', 'consignment'],
-  auction: ['register', 'invoice', 'report', 'export', 'consignment'],
+  admin:   ['register', 'invoice', 'report', 'export', 'settings', 'simulate'],
+  auction: ['register', 'invoice', 'report', 'export', 'simulate'],
   gallery: ['register', 'report', 'export'],
   artist:  [],
   heir:    []
@@ -50,9 +50,8 @@ function hasAction(action) {
 function getNavHTML(activePage) {
   const allPages = [
     { id: 'index', label: '대시보드', icon: '📊', href: 'index.html' },
-    { id: 'calculator', label: '추급권 계산기', icon: '🧮', href: 'calculator.html' },
+    { id: 'calculator', label: '비용 계산기', icon: '🧮', href: 'calculator.html' },
     { id: 'transactions', label: '거래 관리', icon: '📋', href: 'transactions.html' },
-    { id: 'consignment', label: '위탁 안내', icon: '📝', href: 'consignment.html' },
     { id: 'artists', label: '작가 DB', icon: '🎨', href: 'artists.html' },
     { id: 'settings', label: '관리자 설정', icon: '⚙️', href: 'settings.html' }
   ];
