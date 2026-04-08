@@ -9,7 +9,60 @@
 <body class="bg-gray-50 min-h-screen" data-page="artists">
   <div id="nav"></div>
   <main class="max-w-7xl mx-auto px-4 py-6">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">작가 데이터베이스 <span class="text-sm font-normal text-slate-400">(A-06)</span></h1>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-slate-800">작가 데이터베이스 <span class="text-sm font-normal text-slate-400">(A-06)</span></h1>
+      <div id="artist-actions"></div>
+    </div>
+
+    <!-- 작가 추가 폼 (숨김) -->
+    <div id="add-artist-form" class="bg-white rounded-xl border p-6 mb-6 hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold text-slate-700">작가 추가</h2>
+        <button onclick="toggleAddForm()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">작가명 (한글) <span class="text-red-400">*</span></label>
+          <input id="new-name" type="text" placeholder="예: 홍길동" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">작가명 (영문)</label>
+          <input id="new-nameEn" type="text" placeholder="예: Hong Gil-dong" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">국적</label>
+          <select id="new-nationality" class="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="KR">한국</option>
+            <option value="JP">일본</option>
+            <option value="US">미국</option>
+            <option value="GB">영국</option>
+            <option value="DE">독일</option>
+            <option value="FR">프랑스</option>
+            <option value="CN">중국</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">생년월일 <span class="text-red-400">*</span></label>
+          <input id="new-birth" type="date" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">사망일 (해당 시)</label>
+          <input id="new-death" type="date" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">분야</label>
+          <input id="new-field" type="text" placeholder="예: 회화, 조각" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-sm font-medium text-slate-600 mb-1">비고</label>
+          <input id="new-note" type="text" placeholder="메모" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button onclick="addArtist()" class="px-6 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700">작가 추가</button>
+        <button onclick="toggleAddForm()" class="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">취소</button>
+      </div>
+    </div>
 
     <!-- 필터 -->
     <div class="bg-white rounded-xl border p-4 mb-6 flex flex-wrap gap-4 items-end">
@@ -46,7 +99,52 @@
   <script src="js/arr-engine.js"></script>
   <script src="js/app.js"></script>
   <script>
-  function initPage() { renderArtists(); }
+  function initPage() {
+    renderArtists();
+    // 권한별 버튼
+    if (hasAction('register')) {
+      document.getElementById('artist-actions').innerHTML = '<button onclick="toggleAddForm()" class="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 font-medium">➕ 작가 추가</button>';
+    }
+  }
+
+  function toggleAddForm() {
+    document.getElementById('add-artist-form').classList.toggle('hidden');
+  }
+
+  function addArtist() {
+    const name = document.getElementById('new-name').value.trim();
+    const birth = document.getElementById('new-birth').value;
+    if (!name) { alert('작가명을 입력해 주세요.'); return; }
+    if (!birth) { alert('생년월일을 입력해 주세요.'); return; }
+
+    const newArtist = {
+      id: ARTISTS_DATA.length + 1,
+      name: name,
+      nameEn: document.getElementById('new-nameEn').value.trim() || name,
+      birth: birth,
+      death: document.getElementById('new-death').value || null,
+      nationality: document.getElementById('new-nationality').value,
+      field: document.getElementById('new-field').value.trim() || '미분류',
+      note: document.getElementById('new-note').value.trim() || ''
+    };
+
+    ARTISTS_DATA.push(newArtist);
+
+    // 폼 초기화
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-nameEn').value = '';
+    document.getElementById('new-birth').value = '';
+    document.getElementById('new-death').value = '';
+    document.getElementById('new-field').value = '';
+    document.getElementById('new-note').value = '';
+    document.getElementById('add-artist-form').classList.add('hidden');
+
+    // 목록 갱신
+    renderArtists();
+
+    // 추가된 작가 상세 표시
+    showArtistDetail(newArtist.id);
+  }
 
   function renderArtists() {
     const query = document.getElementById('a-search').value.toLowerCase();
